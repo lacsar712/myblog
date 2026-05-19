@@ -60,8 +60,7 @@ api.interceptors.response.use(
   },
 )
 
-export async function getJson<T>(url: string, params?: Record<string, unknown>) {
-  const resp = await api.get<ApiResponse<T>>(url, { params })
+function handleResponse<T>(resp: { data: ApiResponse<T> }): T {
   if (!resp.data.success) {
     notification.error({
       message: resp.data.error?.code ?? '请求失败',
@@ -70,40 +69,24 @@ export async function getJson<T>(url: string, params?: Record<string, unknown>) 
     throw new Error(resp.data.error?.message ?? 'Request failed')
   }
   return resp.data.data
+}
+
+export async function getJson<T>(url: string, params?: Record<string, unknown>) {
+  const resp = await api.get<ApiResponse<T>>(url, { params })
+  return handleResponse(resp)
 }
 
 export async function postJson<T>(url: string, body?: unknown) {
   const resp = await api.post<ApiResponse<T>>(url, body)
-  if (!resp.data.success) {
-    notification.error({
-      message: resp.data.error?.code ?? '请求失败',
-      description: resp.data.error?.message ?? '未知错误',
-    })
-    throw new Error(resp.data.error?.message ?? 'Request failed')
-  }
-  return resp.data.data
+  return handleResponse(resp)
 }
 
 export async function putJson<T>(url: string, body?: unknown) {
   const resp = await api.put<ApiResponse<T>>(url, body)
-  if (!resp.data.success) {
-    notification.error({
-      message: resp.data.error?.code ?? '请求失败',
-      description: resp.data.error?.message ?? '未知错误',
-    })
-    throw new Error(resp.data.error?.message ?? 'Request failed')
-  }
-  return resp.data.data
+  return handleResponse(resp)
 }
 
 export async function deleteJson<T>(url: string) {
   const resp = await api.delete<ApiResponse<T>>(url)
-  if (!resp.data.success) {
-    notification.error({
-      message: resp.data.error?.code ?? '请求失败',
-      description: resp.data.error?.message ?? '未知错误',
-    })
-    throw new Error(resp.data.error?.message ?? 'Request failed')
-  }
-  return resp.data.data
+  return handleResponse(resp)
 }
