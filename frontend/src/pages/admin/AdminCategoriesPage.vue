@@ -1,21 +1,12 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { getJson, postJson, deleteJson } from '@/lib/api'
-import { confirmModal, toastSuccess, toastWarning } from '@/lib/feedback'
+import { ref } from 'vue'
+import { getJson, postJson, deleteJson, type Category } from '@/lib/api'
+import { toastSuccess, toastWarning } from '@/lib/feedback'
+import { useList } from '@/composables/useAdminList'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import Table from '@/components/ui/Table.vue'
 import Card from '@/components/ui/Card.vue'
-
-interface Category {
-  id: string
-  name: string
-  slug: string
-}
-
-const loading = ref(false)
-const items = ref<Category[]>([])
-const form = ref({ name: '', slug: '' })
 
 const columns = [
   { key: 'name', title: '名称' },
@@ -23,14 +14,19 @@ const columns = [
   { key: 'actions', title: '操作', width: '120px' },
 ]
 
-async function fetchList() {
-  loading.value = true
-  try {
-    items.value = await getJson<Category[]>('/admin/categories')
-  } finally {
-    loading.value = false
-  }
-}
+const form = ref({ name: '', slug: '' })
+
+const { items, loading, fetchList, handleRemove: remove } = useList<Category>({
+  load: () => getJson<Category[]>('/admin/categories'),
+  remove: (id: string) => deleteJson(`/admin/categories/${id}`),
+  confirm: {
+    title: '确认删除？',
+    content: '删除后不可恢复。',
+    okText: '删除',
+    cancelText: '取消',
+  },
+  successMessage: '已删除',
+})
 
 async function create() {
   if (!form.value.name || !form.value.slug) {
@@ -42,16 +38,6 @@ async function create() {
   toastSuccess('创建成功')
   await fetchList()
 }
-
-async function remove(id: string) {
-  const ok = await confirmModal({ title: '确认删除？', content: '删除后不可恢复。', okText: '删除', cancelText: '取消', danger: true })
-  if (!ok) return
-  await deleteJson(`/admin/categories/${id}`)
-  toastSuccess('已删除')
-  await fetchList()
-}
-
-onMounted(fetchList)
 </script>
 
 <template>
