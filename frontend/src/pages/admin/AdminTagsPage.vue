@@ -1,52 +1,41 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { getJson, postJson, deleteJson } from '@/lib/api'
-import { confirmModal, toastSuccess, toastWarning } from '@/lib/feedback'
+import { getJson, type Tag } from '@/lib/api'
+import { toastWarning } from '@/lib/feedback'
+import { useList, useCreate, useDelete } from '@/composables'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import Table from '@/components/ui/Table.vue'
 import Card from '@/components/ui/Card.vue'
 
-interface Tag {
-  id: string
-  name: string
-}
-
-const loading = ref(false)
-const items = ref<Tag[]>([])
 const form = ref({ name: '' })
+
+const { loading, items, fetchList } = useList<Tag>(
+  async () => await getJson('/admin/tags')
+)
+
+const { create: submitCreate } = useCreate(
+  '/admin/tags',
+  form,
+  fetchList
+)
+
+const { remove } = useDelete(
+  (id) => `/admin/tags/${id}`,
+  fetchList
+)
 
 const columns = [
   { key: 'name', title: '名称' },
   { key: 'actions', title: '操作', width: '120px' },
 ]
 
-async function fetchList() {
-  loading.value = true
-  try {
-    items.value = await getJson<Tag[]>('/admin/tags')
-  } finally {
-    loading.value = false
-  }
-}
-
 async function create() {
   if (!form.value.name) {
     toastWarning('请填写名称')
     return
   }
-  await postJson('/admin/tags', form.value)
-  form.value = { name: '' }
-  toastSuccess('创建成功')
-  await fetchList()
-}
-
-async function remove(id: string) {
-  const ok = await confirmModal({ title: '确认删除？', content: '删除后不可恢复。', okText: '删除', cancelText: '取消', danger: true })
-  if (!ok) return
-  await deleteJson(`/admin/tags/${id}`)
-  toastSuccess('已删除')
-  await fetchList()
+  await submitCreate()
 }
 
 onMounted(fetchList)
