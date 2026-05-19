@@ -1,22 +1,20 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { getJson, postJson, type Article, type PageResult } from '@/lib/api'
-import dayjs from 'dayjs'
 import { confirmModal, toastSuccess } from '@/lib/feedback'
+import { useList } from '@/composables/useAdminList'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import Table from '@/components/ui/Table.vue'
 import Card from '@/components/ui/Card.vue'
+import dayjs from 'dayjs'
 
 const router = useRouter()
 
-const loading = ref(false)
 const keyword = ref('')
-const items = ref<Article[]>([])
 const page = ref(1)
 const pageSize = ref(10)
-const total = ref(0) // Logic for pagination if needed
 
 const columns = [
   { key: 'title', title: '标题' },
@@ -25,20 +23,13 @@ const columns = [
   { key: 'actions', title: '操作', width: '220px' },
 ]
 
-async function fetchList() {
-  loading.value = true
-  try {
-    const data = await getJson<PageResult<Article>>('/admin/articles', {
-      keyword: keyword.value || undefined,
-      page: page.value,
-      pageSize: pageSize.value
-    })
-    items.value = data.items
-    total.value = data.total
-  } finally {
-    loading.value = false
-  }
-}
+const { items, loading, total, fetchList } = useList<Article>({
+  load: () => getJson<PageResult<Article>>('/admin/articles', {
+    keyword: keyword.value || undefined,
+    page: page.value,
+    pageSize: pageSize.value,
+  }),
+})
 
 async function togglePublish(a: Article) {
   const ok = await confirmModal({
@@ -48,7 +39,7 @@ async function togglePublish(a: Article) {
     cancelText: '取消',
   })
   if (!ok) return
-  
+
   const next = a.status === 'published' ? 'unpublish' : 'publish'
   await postJson(`/admin/articles/${a.id}/${next}`)
   toastSuccess(a.status === 'published' ? '已取消发布' : '已发布')
@@ -62,8 +53,6 @@ function handleEdit(a: Article) {
 function handleCreate() {
   router.push('/admin/articles/new')
 }
-
-onMounted(fetchList)
 </script>
 
 <template>
