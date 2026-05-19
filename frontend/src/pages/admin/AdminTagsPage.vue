@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { getJson, postJson, deleteJson } from '@/lib/api'
-import { confirmModal, toastSuccess, toastWarning } from '@/lib/feedback'
+import { toastWarning, toastSuccess } from '@/lib/feedback'
+import { useListLoader, confirmAndRun } from '@/composables/useAdmin'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import Table from '@/components/ui/Table.vue'
@@ -12,7 +13,6 @@ interface Tag {
   name: string
 }
 
-const loading = ref(false)
 const items = ref<Tag[]>([])
 const form = ref({ name: '' })
 
@@ -21,14 +21,9 @@ const columns = [
   { key: 'actions', title: '操作', width: '120px' },
 ]
 
-async function fetchList() {
-  loading.value = true
-  try {
-    items.value = await getJson<Tag[]>('/admin/tags')
-  } finally {
-    loading.value = false
-  }
-}
+const { loading, load: fetchList } = useListLoader(async () => {
+  items.value = await getJson<Tag[]>('/admin/tags')
+})
 
 async function create() {
   if (!form.value.name) {
@@ -42,11 +37,12 @@ async function create() {
 }
 
 async function remove(id: string) {
-  const ok = await confirmModal({ title: '确认删除？', content: '删除后不可恢复。', okText: '删除', cancelText: '取消', danger: true })
-  if (!ok) return
-  await deleteJson(`/admin/tags/${id}`)
-  toastSuccess('已删除')
-  await fetchList()
+  await confirmAndRun({
+    confirm: { title: '确认删除？', content: '删除后不可恢复。', okText: '删除', cancelText: '取消', danger: true },
+    action: () => deleteJson(`/admin/tags/${id}`),
+    successMsg: '已删除',
+    onSuccess: fetchList,
+  })
 }
 
 onMounted(fetchList)
